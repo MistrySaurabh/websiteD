@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css" integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous">
+    <script src="https://code.jquery.com/jquery-3.3.1.min.js"></script>
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/2.2.0/socket.io.js"></script>
+    <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/vue"></script>
+
+    <title>Website Downloader</title>
+  </head>
+  <body>
+        <div class="d-flex flex-column flex-md-row align-items-center p-3 px-md-4 mb-3 bg-white border-bottom shadow-sm">
+            <h5 class="my-0 mr-md-auto font-weight-normal">Website Downloader</h5>
+        </div>
+        <div id="app" v-cloak class="px-3 py-3 pt-md-5 pb-md-4 mx-auto text-center">
+            <h1 class="display-4">Download Website</h1>
+            <div class="row mt-4">
+                <div class="offset-md-3 col-md-6 col-sm-12 col-12">
+                    <form id="website_download_form">
+                        <div class="form-group">
+                            <input v-model="url" type="url" class="form-control" id="website" name="url" placeholder="Paste website indexpage url here" required>
+                        </div>
+                        <button v-on:click="copyWebsite" id="btn_download" type="button" class="btn btn-primary btn-sm btn-block" v-if="!btnClicked">Download</button>
+                    </form>
+
+                    <div v-if="live" style="background-color:#212121;margin-top:16px;height:350px;overflow:scroll">
+                     <p v-for="log in logs" class="text-left text-white">
+                       {{log}}
+                     </p>
+                    </div>
+
+                    <div v-if="error" class="alert alert-danger" role="alert">
+                        {{errorMessage}}
+                    </div>
+
+                    <a :href="downloadlink" v-if="readyToDownload" class="btn mt-3 btn-success btn-sm btn-block" target="_blank">Ready To Download</a>
+                </div>
+            </div>
+        </div>
+
+        <script>
+         
+         var socket = io('/')
+            socket.on('connect', function(){
+                app.connected = true
+            });
+
+            socket.on('live', function(data){
+                console.log(data)
+                app.live = data
+            });
+
+            socket.on('download', function(download){
+                app.readyToDownload = download.ready
+                app.downloadlink= download.link
+            });
+
+            socket.on('event_log', function(log){
+                console.log(log)
+                app.logs.push(log.message)
+                if(app.logs.length > 50) {
+                    app.logs = app.logs.slice(Math.max(app.logs.length - 50, 1))
+                }
+            });
+
+            socket.on('error',function(error){
+                app.error=true;
+                app.errorMessage=error.message;
+                app.logs=[];
+                app.live=false;
+                app.btnClicked=false;
+            });
+
+        var app = new Vue({
+                el: '#app',
+                data: {
+                    error:false,
+                    errorMessage:'',
+                    url:'',
+                    btnClicked:false,
+                    live: false,
+                    readyToDownload: false,
+                    downloadlink:'',
+                    connected: false,
+                    logs: [],
+                },
+                methods:{
+                    copyWebsite: function () {
+                        const URL_PATTERN=/^((http[s]?:)?\/\/)/;
+                        if(this.url!='' && this.url.length>0 &&  URL_PATTERN.test(this.url)){
+                            this.btnClicked=true;
+                            socket.emit('join',this.url);
+                        }else{
+                            this.btnClicked=false;
+                            alert('Please enter valid URL');
+                        }
+                    }
+                }
+        });
+        </script>
+  </body>
+</html>
